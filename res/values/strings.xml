@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">RockApp</string>
+    <string name="comments">Comments&#8230;</string> <!-- &&;#8230; is elipse -->
+    
+    <string name="menu_add">New Rock</string>
+    <string name="menu_list">List Rocks</string>
+    <string name="menu_gps">Move to Me</string>
+    <string name="menu_gps_off">Enable GPS</string>
+    <string name="menu_gps_searching">Looking for GPS</string>
+    <string name="menu_show_type">Hide/Show Rocks By Type</string>
+    <string name="menu_all_rocks">All Rocks</string>
+    <string name="menu_picked">Picked Up Rocks</string>
+    <string name="menu_not_picked">Not Picked Up Rocks</string>
+    <string name="menu_sync">Sync</string>
+    
+    <string name="rock_picked">Toggle if rock needs to be picked up or already has</string>
+    <string name="rock_picture">Take picture of rock for later viewing</string>
+    <string name="rock_list_title">Zoom to a rock</string>
+    <string name="rock_picked_up">Already Picked Up</string>
+    <string name="rock_not_picked_up">Need to Pick Up</string>
+    <string name="rock_perm_desc">Let apps access your database of rocks</string>
+    <string name="rock_perm_label">Rocks Access</string>
+    
+    <string name="rock_undo_move">Undo Move?</string>
+    <string name="rock_delete_title">Are you sure you want to delete this rock?</string>
+    <string name="rock_delete">Delete Rock?</string>
+    <string name="rock_delete_yes">Yes</string>
+    <string name="rock_delete_no">No</string>
+    <string name="rock_cancel">Cancel</string>
+    <string name="rock_camera">Take Picture</string>
+    <string name="rock_camera_delete">Delete Picture</string>
+    <string name="rock_image_delete_title">Are you sure you want to delete the image of this rock?</string>
+    <string name="rock_image_delete">Delete Image of Rock?</string>
+    <string name="rock_image_delete_yes">Yes</string>
+    <string name="rock_image_delete_no">No</string>
+    
+    <string name="rock_list_feet">ft away</string>
+    <string name="rock_list_miles">mi away</string>
+    <string name="rock_list_from_you">from you</string>
+    <string name="rock_list_from_center">from map center</string>
+    
+    <string name="location_wait">Still searching for your location</string>
+</resources>

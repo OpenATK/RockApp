@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    
+    <item 
+        android:id="@+id/rock_image_delete"
+        android:title="@string/rock_image_delete"
+        android:icon="@drawable/delete"
+        android:showAsAction="always|withText" />
+    
+    <item 
+        android:id="@+id/rock_image_camera"
+        android:title="@string/rock_camera"
+        android:icon="@drawable/camera"
+        android:showAsAction="always|withText" />
+
+</menu>

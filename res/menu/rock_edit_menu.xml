@@ -1,0 +1,13 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item 
+        android:id="@+id/rock_undo_move"
+        android:title="@string/rock_undo_move"
+        android:icon="@drawable/delete"
+        android:showAsAction="always|withText"
+        android:visible="false" />
+    <item 
+        android:id="@+id/rock_delete"
+        android:title="@string/rock_delete"
+        android:icon="@drawable/delete"
+        android:showAsAction="always|withText" />
+</menu>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edu.purdue.autogenics.rockapp.RockMenu xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rock_edit_layout"
+    speed="150"
+    slideOutDirection="up"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+	android:layout_alignBottom="@id/map"
+    android:background="@drawable/menu_round_corners"
+    android:visibility="invisible" >
+
+    <!-- Control Buttons -->
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:layout_gravity="top">
+        
+        <!-- Toggle picked up status of the rock button -->
+        <ImageButton
+            android:id="@+id/button_picked"
+            style="@style/image_button"
+            android:layout_width="wrap_content"
+			android:layout_alignParentLeft="true"
+            android:contentDescription="@string/rock_picked"
+            android:src="@drawable/button_picked" />
+
+        <!-- Take a picture of a the rock button -->
+        <ImageButton
+            android:id="@+id/button_picture"
+			android:layout_alignParentRight="true"
+            style="@style/image_button"
+            android:contentDescription="@string/rock_picture"
+            android:src="@drawable/rock_picture" />
+     
+    </RelativeLayout>
+    
+    <!-- Comments box -->
+    <EditText
+        android:id="@+id/comments"
+        style="@style/rockApp.CommentsBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_marginTop="0dp"
+        android:background="@drawable/textbox_round_corners"
+        android:hint="@string/comments"
+        android:lines="1" />
+</edu.purdue.autogenics.rockapp.RockMenu>

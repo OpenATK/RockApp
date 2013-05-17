@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="button_image_background">#90000000</color>
+    <color name="button_image_border">#BABABA</color>
+    
+    <color name="menu_background">#90000000</color> 
+    
+    <color name="textbox_background">#B0888888</color>
+    <color name="textbox_border">#BABABA</color>
+    
+ 	<color name="rock_move_background">#A0000000</color>
+</resources>
