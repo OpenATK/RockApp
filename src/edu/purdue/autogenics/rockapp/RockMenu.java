@@ -1,6 +1,7 @@
 package edu.purdue.autogenics.rockapp;
 
 import java.io.File;
+import java.util.Date;
 
 import com.google.android.gms.maps.model.LatLng;
 
@@ -157,6 +158,8 @@ public class RockMenu extends SlideLayout implements OnClickListener {
 	 */
 	public void flush() {
 		if(this.rock != null) {
+			Log.d("RockMenu", "Flushing");
+
 			boolean needSave = false;
 			
 			// Compare and set comments if different
@@ -177,9 +180,9 @@ public class RockMenu extends SlideLayout implements OnClickListener {
 				Log.d("RockMenu", "Rock position has changed.");
 			}
 			
-			
 			// Compare and set picked status if different
 			if(picked.isSelected() != this.rock.isPicked()) {
+				Log.d("RockMenu", "Changing icon");
 				this.rock.setPicked(picked.isSelected());
 				markerHandler.changeMarkerIcon(rock);
 				needSave = true;
@@ -187,7 +190,9 @@ public class RockMenu extends SlideLayout implements OnClickListener {
 			
 			// If something was changed then we need to save
 			if(needSave) {
+				Log.d("RockMenu", "Saving");
 				this.rock.setChanged(true);
+				this.rock.setChangedDate(new Date());
 				this.rock.save();
 			}			
 			this.newLatLng = null;
@@ -229,6 +234,7 @@ public class RockMenu extends SlideLayout implements OnClickListener {
 				if(RockMenu.this.rock != null){
 					RockMenu.this.rock.setComments(comments.getText().toString());
 					RockMenu.this.rock.setChanged(true);
+					RockMenu.this.rock.setChangedDate(new Date());
 					RockMenu.this.rock.save();
 				}
 			}
@@ -283,7 +289,7 @@ public class RockMenu extends SlideLayout implements OnClickListener {
 		}
 		
 		private void handleDeletedRock(Context context, int rockId) {
-			// Just in case the delete logic doesn't change states
+			// Just in case the delete logic doesn't change states, delete rock happens in a sync
 			hide();
 		}
 	}
@@ -407,6 +413,8 @@ public class RockMenu extends SlideLayout implements OnClickListener {
 			if(rock != null){
 				rock.setPicked(!rock.isPicked());
 				rock.setChanged(true);
+				rock.setChangedDate(new Date());
+				Log.d("RockMenu", "Saving after pickup change");
 				rock.save();
 				markerHandler.changeMarkerIcon(rock);
 				this.updateMenu();

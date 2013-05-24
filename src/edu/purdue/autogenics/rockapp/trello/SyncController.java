@@ -6,8 +6,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 
@@ -16,14 +18,17 @@ import edu.purdue.autogenics.libtrello.IBoard;
 import edu.purdue.autogenics.libtrello.ICard;
 import edu.purdue.autogenics.libtrello.IList;
 import edu.purdue.autogenics.libtrello.ISyncController;
+import edu.purdue.autogenics.libtrello.TrelloController;
 
 public class SyncController implements ISyncController {
 
 	private Context AppContext;
+	private TrelloController trelloController;
 	
-	public SyncController(Context appContext) {
+	public SyncController(Context appContext, TrelloController trelloController) {
 		super();
 		AppContext = appContext;
+		this.trelloController = trelloController;
 	}
 
 	@Override
@@ -46,6 +51,9 @@ public class SyncController implements ISyncController {
 			editor.putString("PickedListTrelloId", "");
 			editor.putString("NotPickedListTrelloId", "");
 			editor.commit();
+			
+			//Sync boards again on next sync
+			trelloController.resyncBoards();
 		}
 	}
 
@@ -105,21 +113,57 @@ public class SyncController implements ISyncController {
 			SharedPreferences.Editor editor = prefs.edit();
 			editor.putString("NotPickedListTrelloId", "");
 			editor.commit();
+		} else if(trelloList.getClosed() == true){
+			if(localList.getName().contentEquals("Rocks In Field")){
+				//Delete all rocks in this list
+				ArrayList<Rock> rockList  = Rock.getRocks(AppContext);
+				for(int i=0; i < rockList.size(); i++){
+					Rock curRock = rockList.get(i);
+					if(curRock.isPicked() == false){
+						curRock.setDeleted(true);
+						curRock.save();
+					}
+				}
+				
+				
+				SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(AppContext);
+				SharedPreferences.Editor editor = prefs.edit();
+				editor.putString("NotPickedListTrelloId", "");
+				editor.commit();
+			} else if(localList.getName().contentEquals("Rocks Picked Up")){
+				//Delete all rocks in this list
+				ArrayList<Rock> rockList  = Rock.getRocks(AppContext);
+				for(int i=0; i < rockList.size(); i++){
+					Rock curRock = rockList.get(i);
+					if(curRock.isPicked()){
+						curRock.setDeleted(true);
+						curRock.save();
+					}
+				}
+				
+				
+				SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(AppContext);
+				SharedPreferences.Editor editor = prefs.edit();
+				editor.putString("PickedListTrelloId", "");
+				editor.commit();
+			}
 		}
 	}
 
 	@Override
 	public void addList(IList trelloList) {
-		if(trelloList.getName().contentEquals("Rocks Picked Up")){
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(AppContext);
-			SharedPreferences.Editor editor = prefs.edit();
-			editor.putString("PickedListTrelloId", trelloList.getTrelloId());
-			editor.commit();
-		} else if(trelloList.getName().contentEquals("Rocks In Field")){
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(AppContext);
-			SharedPreferences.Editor editor = prefs.edit();
-			editor.putString("NotPickedListTrelloId", trelloList.getTrelloId());
-			editor.commit();
+		if(trelloList.getClosed() == false){
+			if(trelloList.getName().contentEquals("Rocks Picked Up")){
+				SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(AppContext);
+				SharedPreferences.Editor editor = prefs.edit();
+				editor.putString("PickedListTrelloId", trelloList.getTrelloId());
+				editor.commit();
+			} else if(trelloList.getName().contentEquals("Rocks In Field")){
+				SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(AppContext);
+				SharedPreferences.Editor editor = prefs.edit();
+				editor.putString("NotPickedListTrelloId", trelloList.getTrelloId());
+				editor.commit();
+			}
 		}
 	}
 
@@ -147,59 +191,64 @@ public class SyncController implements ISyncController {
 	public void updateCard(ICard localCard, ICard trelloCard) {
 		//Card from Trello, update if needed
 		Boolean needsUpdate = false;
-		if(localCard.getListId().contentEquals(trelloCard.getListId()) == false){
-			//Pick or UnPick rock
-			needsUpdate = true;
-		}
-		if(localCard.getName().contentEquals(trelloCard.getName()) == false){
-			//Move rock
-			needsUpdate = true;
-		}
-		if(localCard.getDesc().contentEquals(trelloCard.getDesc()) == false){
-			//Set comments
-			needsUpdate = true;
-		}
 		if(localCard.getClosed() != trelloCard.getClosed()){
 			//Delete Rock
 			needsUpdate = true;
 		}
+		if(trelloCard.getClosed() == false){
+			if(localCard.getListId().contentEquals(trelloCard.getListId()) == false){
+				//Pick or UnPick rock
+				needsUpdate = true;
+			}
+			if(localCard.getName().contentEquals(trelloCard.getName()) == false){
+				//Move rock
+				needsUpdate = true;
+			}
+			if(localCard.getDesc().contentEquals(trelloCard.getDesc()) == false){
+				//Set comments
+				needsUpdate = true;
+			}
+		}
+		
 		
 		if(needsUpdate){
 			int localId = (Integer)localCard.getLocalId();
 			Rock theRock = Rock.getRock(AppContext, localId);
-			
-			if(localCard.getListId().contentEquals(trelloCard.getListId()) == false){
-				//Pick or UnPick rock
-				SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(AppContext);
-				if(trelloCard.getListId().contentEquals(prefs.getString("PickedListTrelloId", ""))){
-					theRock.setPicked(true);
-				} else if(trelloCard.getListId().contentEquals(prefs.getString("NotPickedListTrelloId", ""))){
-					theRock.setPicked(false);
-				} else {
-					//Not in a valid list remove rock
-					theRock.setDeleted(true);
+			if(trelloCard.getClosed() == false){
+				//if trello card is closed, only the id is valid.
+				if(localCard.getListId().contentEquals(trelloCard.getListId()) == false){
+					//Pick or UnPick rock
+					SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(AppContext);
+					if(trelloCard.getListId().contentEquals(prefs.getString("PickedListTrelloId", ""))){
+						theRock.setPicked(true);
+					} else if(trelloCard.getListId().contentEquals(prefs.getString("NotPickedListTrelloId", ""))){
+						theRock.setPicked(false);
+					} else {
+						//Not in a valid list remove rock
+						theRock.setDeleted(true);
+					}
 				}
-			}
-			if(localCard.getName().contentEquals(trelloCard.getName()) == false){
-				//Move rock
-				Pattern p = Pattern.compile("^Lat: ([-]?)([0-9]{1,3})[.]([0-9]+) Lng: ([-]?)([0-9]{1,3})[.]([0-9]+)$");
-				Matcher m = p.matcher(trelloCard.getName());
-				if(m.find()){
-					Log.d("SyncController - updateCard","Lat:" + m.group(1) + m.group(2) + "." + m.group(3));
-					Log.d("SyncController - updateCard","Lng:" + m.group(4) + m.group(5) + "." + m.group(6));
-					Double lat = Double.parseDouble(m.group(1) + m.group(2) + "." + m.group(3));
-					Double lng = Double.parseDouble(m.group(4) + m.group(5) + "." + m.group(6));
-					
-					theRock.setLat(lat);
-					theRock.setLon(lng);
-				} else {
-					//No longer a vaild rock
-					theRock.setDeleted(true);
+				if(localCard.getName().contentEquals(trelloCard.getName()) == false){
+					//Move rock
+					Pattern p = Pattern.compile("^Lat: ([-]?)([0-9]{1,3})[.]([0-9]+) Lng: ([-]?)([0-9]{1,3})[.]([0-9]+)$");
+					Matcher m = p.matcher(trelloCard.getName());
+					if(m.find()){
+						Log.d("SyncController - updateCard","Lat:" + m.group(1) + m.group(2) + "." + m.group(3));
+						Log.d("SyncController - updateCard","Lng:" + m.group(4) + m.group(5) + "." + m.group(6));
+						Double lat = Double.parseDouble(m.group(1) + m.group(2) + "." + m.group(3));
+						Double lng = Double.parseDouble(m.group(4) + m.group(5) + "." + m.group(6));
+						
+						theRock.setLat(lat);
+						theRock.setLon(lng);
+					} else {
+						//No longer a vaild rock
+						theRock.setDeleted(true);
+					}
 				}
-			}
-			if(localCard.getDesc().contentEquals(trelloCard.getDesc()) == false){
-				//Set comments
-				theRock.setComments(trelloCard.getDesc());
+				if(localCard.getDesc().contentEquals(trelloCard.getDesc()) == false){
+					//Set comments
+					theRock.setComments(trelloCard.getDesc());
+				}
 			}
 			if(localCard.getClosed() != trelloCard.getClosed()){
 				//Delete Rock
@@ -230,6 +279,7 @@ public class SyncController implements ISyncController {
 				String notPickedListId = prefs.getString("NotPickedListTrelloId", "");
 				rock.setTrelloId(trelloCard.getTrelloId());
 				rock.setComments(trelloCard.getDesc());
+				rock.setChanged(false);
 				
 				Boolean inValidList = true;
 				if(trelloCard.getListId().contentEquals(pickedListId)){
@@ -268,7 +318,7 @@ public class SyncController implements ISyncController {
 	public List<ICard> getLocalCards() {
 		//Now get database Rocks and compare to allMarkers
 		List<ICard> cardList = new ArrayList<ICard>();
-		ArrayList<Rock> rockList  = Rock.getRocks(AppContext);
+		ArrayList<Rock> rockList  = Rock.getAllRocks(AppContext);
 
 		for(int i=0; i < rockList.size(); i++){
 			Rock curRock = rockList.get(i);
@@ -278,6 +328,7 @@ public class SyncController implements ISyncController {
 			rockCard.setId(curRock.getId());
 			rockCard.setComments(curRock.getComments());
 			rockCard.setChanged(curRock.getChanged());
+			rockCard.setChangedDate(curRock.getChangedDate());
 			cardList.add(rockCard);
 		}
 		return cardList;

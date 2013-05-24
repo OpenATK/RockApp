@@ -3,6 +3,7 @@ package edu.purdue.autogenics.rockapp;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -109,9 +110,9 @@ public class MainActivity extends FragmentActivity implements OnMarkerClickListe
         
         
         //Trello
-        syncController = new SyncController(getApplicationContext());
-        trelloController = new TrelloController("51147a54abe641a06d005a7c", "b1ae1192adda1b5b61563d30d7ab403b", "6062b4a531f48370212524b9fca34a1dbdae47891784670281cb511b372bb4e2");
-        
+        trelloController = new TrelloController(getApplicationContext(), "51147a54abe641a06d005a7c", "b1ae1192adda1b5b61563d30d7ab403b", "6062b4a531f48370212524b9fca34a1dbdae47891784670281cb511b372bb4e2");
+        syncController = new SyncController(getApplicationContext(), trelloController);
+
         //Restore state from savedInstanceState
         if(savedInstanceState != null) {
         	mCurrentRockSelected = savedInstanceState.getInt("rock_edit.currentRock", Rock.BLANK_ROCK_ID);
@@ -346,12 +347,21 @@ public class MainActivity extends FragmentActivity implements OnMarkerClickListe
 			break;
 			
 			case R.id.sync:
-				//Sync
-				new Thread(new Runnable() {
-				    public void run() {
-				    	trelloController.sync(syncController);
-				    }
-				  }).start();
+				if(trelloController.syncingEnabled()){
+					if(trelloController.getAPIKeys()){
+						//Sync
+						new Thread(new Runnable() {
+						    public void run() {
+						    	trelloController.sync(syncController);
+						    }
+						  }).start();
+					} else {
+						Log.d("MainActivity - Syncing", "API Keys not loaded");
+
+					}
+				} else {
+					Log.d("MainActivity - Syncing", "Syncing not enabled");
+				}
 				result = true;
 			break;
 		}
@@ -389,6 +399,8 @@ public class MainActivity extends FragmentActivity implements OnMarkerClickListe
 		// Rock and save in DB (triggering it to display on the map)
 		Rock rock = new Rock(this, where.latitude, where.longitude, false);
 		rock.setTrelloId("");
+		rock.setChanged(true);
+		rock.setChangedDate(new Date());
 		rock.save();
 	}
 	
@@ -493,6 +505,7 @@ public class MainActivity extends FragmentActivity implements OnMarkerClickListe
 							// Update the rock model and save it
 							File image = new File(Rock.IMAGE_PATH, String.format(Rock.IMAGE_FILENAME_PATTERN, rock.getId()));
 							rock.setPicture(image.getAbsolutePath());
+							//TODO set changed and changed date to upload the rock photo
 							rock.save(false);
 							slideMenu.editRock(rock);
 						}
@@ -578,6 +591,8 @@ public class MainActivity extends FragmentActivity implements OnMarkerClickListe
 				// Delete the rock that is currently being edited
 				slideMenu.delete();
 				setState(STATE_DEFAULT);
+				//Unselect rock
+				selectRock(Rock.BLANK_ROCK_ID);
 			}
 		});
 		

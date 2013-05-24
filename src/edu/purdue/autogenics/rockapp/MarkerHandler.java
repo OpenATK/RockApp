@@ -79,7 +79,6 @@ public class MarkerHandler {
 			Rock curRock = iterator3.next();
 			
 			//Log.d("Adding Rock", "Lat: " + Double.toString(curRock.getLat()) + "  Lng: " + Double.toString(curRock.getLon()));
-			
 			int icon;
 			if(curRock.getId() == selectedRockId){
 				if(curRock.isPicked()){

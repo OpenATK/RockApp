@@ -1,6 +1,7 @@
 package edu.purdue.autogenics.rockapp.trello;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -100,5 +101,6 @@ public class RockCard extends Rock implements ICard {
 	public Object getLocalId() {
 		return this.getId();
 	}
-
+	
+	
 }
