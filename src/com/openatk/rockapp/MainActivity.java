@@ -49,6 +49,7 @@ import com.google.android.gms.maps.model.LatLngBounds.Builder;
 import com.openatk.rockapp.db.DatabaseHelper;
 import com.openatk.rockapp.models.Rock;
 import com.openatk.rockapp.models.Rock.RockListener;
+import com.openatk.rockapp.openatklib.atkSupportMapFragment;
 import com.openatk.rockapp.trello.TrelloContentProvider;
 import com.openatk.rockapp.R;
 import com.openatk.rockapp.RockMenu.RockMenuListener;
