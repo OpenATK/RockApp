@@ -2,7 +2,7 @@
     <item 
         android:id="@+id/rock_undo_move"
         android:title="@string/rock_undo_move"
-        android:icon="@drawable/delete"
+        android:icon="@drawable/undo"
         android:showAsAction="always|withText"
         android:visible="false" />
     <item 

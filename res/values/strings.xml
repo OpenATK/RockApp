@@ -22,6 +22,8 @@
     <string name="rock_not_picked_up">Need to Pick Up</string>
     <string name="rock_perm_desc">Let apps access your database of rocks</string>
     <string name="rock_perm_label">Rocks Access</string>
+    <string name="trello_perm_desc">Let apps access your trello synced data</string>
+    <string name="trello_perm_label">Trello Access</string>
     
     <string name="rock_undo_move">Undo Move?</string>
     <string name="rock_delete_title">Are you sure you want to delete this rock?</string>

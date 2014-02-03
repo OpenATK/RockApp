@@ -34,18 +34,18 @@
                 android:checkableBehavior="single">
                 <item
                     android:id="@+id/all_rocks"
-                    android:icon="@drawable/rock_both"
+                    android:icon="@drawable/rock_select_both"
                     android:title="@string/menu_all_rocks" />
                 
 			    <item 
 			        android:id="@+id/not_picked_rocks"
-				    android:icon="@drawable/rock_down"
+				    android:icon="@drawable/rock_select_down"
 			        android:title="@string/menu_not_picked"
 			        android:checked="true" />
 			    
 			    <item 
 			        android:id="@+id/picked_rocks"
-				    android:icon="@drawable/rock_up"
+				    android:icon="@drawable/rock_select_up"
 			        android:title="@string/menu_picked" />
 		    </group>
     	</menu>
@@ -58,5 +58,15 @@
 	    android:icon="@drawable/refresh"
         android:title="@string/menu_sync"
         android:visible="true" />
+    <item
+        android:id="@+id/menu_help"
+        android:orderInCategory="100"
+        android:title="Help"
+        android:layout_gravity="bottom"/>
+    <item
+        android:id="@+id/menu_legal"
+        android:orderInCategory="100"
+        android:title="Legal"
+        android:layout_gravity="bottom"/>
 
 </menu>
