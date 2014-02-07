@@ -49,6 +49,8 @@ import com.google.android.gms.maps.model.LatLngBounds.Builder;
 import com.openatk.rockapp.db.DatabaseHelper;
 import com.openatk.rockapp.models.Rock;
 import com.openatk.rockapp.models.Rock.RockListener;
+import com.openatk.rockapp.openatklib.atkMap;
+import com.openatk.rockapp.openatklib.atkPolygonView;
 import com.openatk.rockapp.openatklib.atkSupportMapFragment;
 import com.openatk.rockapp.trello.TrelloContentProvider;
 import com.openatk.rockapp.R;
@@ -62,6 +64,8 @@ public class MainActivity extends FragmentActivity implements
 	private DatabaseHelper dbHelper;
 
 	private GoogleMap map;
+	private atkMap atkmap;
+
 	private UiSettings mapSettings;
 	private MarkerHandler markerHandler;
 
@@ -106,7 +110,7 @@ public class MainActivity extends FragmentActivity implements
 		dbHelper = new DatabaseHelper(this);
 		
 		FragmentManager fm = getSupportFragmentManager();
-		SupportMapFragment f = (SupportMapFragment) fm.findFragmentById(R.id.map);
+		atkSupportMapFragment f = (atkSupportMapFragment) fm.findFragmentById(R.id.map);
 
 		if (savedInstanceState == null) {
 			// First incarnation of this activity.
@@ -116,6 +120,7 @@ public class MainActivity extends FragmentActivity implements
 			// in the previous
 			// activity life cycle. There is no need to reinitialize it.
 			map = f.getExtendedMap();
+			atkmap = f.getAtkMap();
 		}
 		
 		checkGPS();
@@ -199,14 +204,15 @@ public class MainActivity extends FragmentActivity implements
 	private void setUpMapIfNeeded() {
 		if (map == null) {
 			map = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getExtendedMap();
+			atkmap = ((atkSupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getAtkMap();
 		}
 		markerHandler = new MarkerHandler(this, map, dbHelper, mCurrentRockSelected);
 		slideMenu.setMarkerHandler(markerHandler);
 		if (map != null) {
 			setUpMap();
 			map.setOnMarkerDragListener(this);
-			map.setOnMarkerClickListener(this);
-			map.setOnMapClickListener(this);
+			//map.setOnMarkerClickListener(this); TODO
+			//map.setOnMapClickListener(this); TODO
 			map.setOnCameraChangeListener(this);
 			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 			Float startLat = prefs.getFloat("StartupLat", START_LAT);
@@ -358,9 +364,13 @@ public class MainActivity extends FragmentActivity implements
 
 		case R.id.list:
 			// showRockList();
+			if(atkmap == null){
+				Log.d("MainActivity", "atkmap is null");
+			}
+			atkPolygonView polygonView = atkmap.drawPolygon(0);
+			
 			result = true;
 			break;
-
 		case R.id.rock_delete:
 			showConfirmRockDeleteAlert();
 			result = true;

@@ -14,26 +14,24 @@ public class atkPointView {
 	private Marker marker;
 	private MarkerOptions markerOptions;
 	
-	public atkPointView(){
-		
-	}
-	
+
 	public atkPointView(GoogleMap map, atkPoint point){
 		this.map = map;
 		this.point = point;
-		this.drawPoint();
 		markerOptions = new MarkerOptions().position(point.position);
+		this.drawPoint();
 	}
 	
 	public atkPoint getAtkPoint(){
 		return point;
 	}
-	
-	public void update(atkPoint point){
+	public void setAtkPoint(atkPoint point){
 		this.point = point;
-		if(marker != null){
-			marker.setPosition(point.position);
-		}
+		this.drawPoint();
+	}
+	
+	public void update(){
+		this.drawPoint();
 	}
 	
 	public void remove(){
@@ -42,16 +40,23 @@ public class atkPointView {
 	}
 	
 	public void hide(){
-		this.remove();
+		this.markerOptions.visible(false);
+		if(this.marker != null) this.marker.setVisible(false);
 	}
 	
 	public void show(){
-		if(marker == null) drawPoint();
+		this.markerOptions.visible(true);
+		if(this.marker != null) this.marker.setVisible(false);
 	}
 	
-	public void changeIcon(BitmapDescriptor icon){
+	public void setIcon(BitmapDescriptor icon){
+		this.markerOptions.icon(icon);
 		if(marker != null) marker.setIcon(icon);
-		markerOptions.icon(icon);
+	}
+	
+	public void setAnchor(float horizontal, float vertical){
+		this.markerOptions.anchor(horizontal, vertical);
+		if(marker != null) marker.setAnchor(horizontal, vertical);
 	}
 	
 	public void setOnClickListener(atkPointClickListener listener){
@@ -73,7 +78,13 @@ public class atkPointView {
 	
 	private void drawPoint(){
 		//Draw the point on the map
-		markerOptions.position(point.position);
-		marker = this.map.addMarker(markerOptions);
+		if(point.position != null) {
+			markerOptions.position(point.position);
+			if(marker == null) {
+				marker = this.map.addMarker(markerOptions);
+			} else {
+				marker.setPosition(point.position);
+			}
+		}
 	}
 }

@@ -17,26 +17,34 @@ import android.view.ViewGroup;
 public class atkSupportMapFragment extends SupportMapFragment {
 	 public View mOriginalContentView;
 	 public atkTouchableWrapper mTouchView;   
-  
+	 private atkMap map;
+	 
 	 @Override
 	 public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState) {
 	    mOriginalContentView = super.onCreateView(inflater, parent, savedInstanceState); 
 	    
-	    LayoutInflater vi = (LayoutInflater) this.getActivity().getApplicationContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-	    View v = vi.inflate(R.layout.pan_button, null);
+	    
+	    Log.d("atkSupportMapFragment", "onCreateView()");
+	    //LayoutInflater vi = (LayoutInflater) this.getActivity().getApplicationContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+	    //View v = vi.inflate(R.layout.pan_button, null);
+	    
 	    mTouchView = new atkTouchableWrapper(getActivity());
 	    mTouchView.addView(mOriginalContentView);
-	    mTouchView.addView(v);
+	    //mTouchView.addView(v);
 	    
 	    //Add listeners for clicks on the map
-	    mTouchView.addListener(new panListener(v));
+	    //mTouchView.addListener(new panListener(v));
 	    
+	    //Would be getMap() if not using android-map-extensions
+	    this.map = new atkMap(this.getExtendedMap(), this.getActivity().getApplicationContext()); 
+	    mTouchView.addListener(this.map); //Let the atkMap listen for touch events
+	    	    
 	    return mTouchView;
 	 }
 	 
 	 
-	 public GoogleMap getAtkMap(){
-		return null;
+	 public atkMap getAtkMap(){
+		return this.map;
 	 }
 
 	 @Override
@@ -74,10 +82,10 @@ public class atkSupportMapFragment extends SupportMapFragment {
 				 }
 			 }
 			 switch (event.getAction()) {
-			 case MotionEvent.ACTION_DOWN:
-				 break;
-			 case MotionEvent.ACTION_UP:
-				 break;
+				 case MotionEvent.ACTION_DOWN:
+					 break;
+				 case MotionEvent.ACTION_UP:
+					 break;
 			 }
 			 return false;
 		 }

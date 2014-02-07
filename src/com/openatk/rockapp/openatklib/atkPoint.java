@@ -5,9 +5,6 @@ import com.google.android.gms.maps.model.LatLng;
 public class atkPoint extends atkModel {
 	public LatLng position;
 	
-	public atkPoint(){
-		
-	}
 	public atkPoint(Object id){
 		this.id = id;
 	}
