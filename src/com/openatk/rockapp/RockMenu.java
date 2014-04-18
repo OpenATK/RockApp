@@ -177,7 +177,6 @@ public class RockMenu extends SlideLayout implements OnClickListener {
             if (RockMenu.this.rock != null) {
 				Log.d("CommentTextChangeListener", "Saving comment");
 				RockMenu.this.rock.setComments(comments.getText().toString());
-				RockMenu.this.rock.setHasSynced(false);
 				RockMenu.this.rock.setCommentsChanged(new Date()); //TODO internet time
 				
 				SQLiteDatabase database = dbHelper.getWritableDatabase();
@@ -303,9 +302,9 @@ public class RockMenu extends SlideLayout implements OnClickListener {
 			if (RockMenu.this.rock == null) {
 				Log.d("RockMenu", "Rock null");
 			} else {
-				if (RockMenu.this.rock.getPicture() == null) {
+				if (this.rock.getPicture() == null) {
 					// Take a picture because one does not exist
-					listener.RockTakePicture(RockMenu.this.rock.getId(), Rock.IMAGE_PATH, String.format(Rock.IMAGE_FILENAME_PATTERN, RockMenu.this.rock.getId()));
+					listener.RockTakePicture(this.rock.getId(), Rock.IMAGE_PATH, String.format(Rock.IMAGE_FILENAME_PATTERN, this.rock.getId()));
 				} else {
 					// start an image viewing activity with image file
 					Intent intent = new Intent();
@@ -318,17 +317,17 @@ public class RockMenu extends SlideLayout implements OnClickListener {
 		} else if (arg0.getId() == R.id.button_picked) {
 			Log.d("RockMenu", "Toggle Picked");
 			// Toggle the current rock
-			Rock rock = RockMenu.this.rock;
-			if (rock != null) {
-				rock.setPicked(!rock.isPicked());
-				rock.setHasSynced(false);
-				rock.setPickedChanged(new Date()); //TODO internet time
+			if(this.rock != null) {
 				SQLiteDatabase database = dbHelper.getWritableDatabase();
+				rock = Rock.getRockById(database, this.rock.getId()); //Get any changes applied to rock before this
+				rock.setPicked(!rock.isPicked());
+				rock.setPickedChanged(new Date()); //TODO internet time
 				rock.save(database);
 				database.close();
 				dbHelper.close();
 				
-				markerHandler.changeMarkerIcon(rock);
+				//Update the map
+				markerHandler.updatePointView(rock.getData(), true);
 				this.updateMenu();
 			} else {
 				// Error

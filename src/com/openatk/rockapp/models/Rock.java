@@ -4,10 +4,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 
-import com.openatk.rockapp.db.TableRocks;
-import com.openatk.rockapp.trello.TrelloCard;
-import com.openatk.rockapp.trello.TrelloObject;
-
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -16,6 +12,10 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Environment;
 import android.preference.PreferenceManager;
 import android.util.Log;
+
+import com.openatk.libtrello.TrelloCard;
+import com.openatk.libtrello.TrelloObject;
+import com.openatk.rockapp.db.TableRocks;
 
 /* A class which knows everything about a given rock */
 public class Rock {
@@ -41,56 +41,34 @@ public class Rock {
     public static final String COL_PICTURE_URL = "picture_url";
     public static final String COL_PICTURE_REMOTE_ID = "picture_remote_id";
 	
-	private int id = BLANK_ROCK_ID;
-	private String remoteId = "";
-	private boolean hasSynced = false;
-	private boolean deleted = false;
-	private double lat;
-	private double lon;
-	private Date posChanged;
-	
-	private boolean picked = false;
-	private Date pickedChanged;
-	
-	private String comments;
-	private Date commentsChanged;
-	
-	private String picture;
-	private Date pictureChanged;
-	private String pictureURL;
-	private String pictureRemoteId;
-	
-	private RockListener listener = null;
-	
+    //Rocks data
+    private RockData data;
+	    
 	public static final int BLANK_ROCK_ID = -1; 
 	
 	public static final String IMAGE_PATH = Environment.getExternalStorageDirectory() + "/com.openatk.rockapp/images";
 	public static final String IMAGE_FILENAME_PATTERN = "rock_%d.png";
 	
-	public interface RockListener {
-		public void	RockPopulateMap(Rock theRock);
-	}
-	
 	public Rock() {
-		
+		this.data = new RockData();
 	}
 	
-	public Rock(RockListener listener) {
-		this.listener = listener;
+	public Rock(RockData data) {
+		this.data = data;
 	}
 	
-	public Rock(RockListener listener, double latitude, double longitude, boolean picked) {
-		this.listener = listener;
-		this.lat = latitude;
-		this.lon = longitude;
-		this.picked = picked;
-		this.deleted = false;
+	public Rock(double latitude, double longitude, boolean picked) {
+		this.data = new RockData();
+		this.data.lat = latitude;
+		this.data.lon = longitude;
+		this.data.picked = picked;
+		this.data.deleted = false;
 	}
 	
 	public TrelloCard toTrelloCard(Context context){
 		TrelloCard card = null;
 		if(this != null){
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+			SharedPreferences prefs = context.getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 			card = new TrelloCard();
 			card.setLocalId(Integer.toString(this.getId()));
 			card.setId(this.getTrelloId());
@@ -179,7 +157,7 @@ public class Rock {
 	public static ArrayList<Rock> getPickedRocks(SQLiteDatabase database) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
 		String where = TableRocks.COL_PICKED + " = 'true'";
-		Cursor cursor = database.query(TableRocks.TABLE_NAME, TableRocks.COLUMNS, null, null, null, null, null);
+		Cursor cursor = database.query(TableRocks.TABLE_NAME, TableRocks.COLUMNS, where, null, null, null, null);
 		while(cursor.moveToNext()) {
 			rocks.add(Rock.cursorToRock(cursor));
 		}
@@ -191,63 +169,64 @@ public class Rock {
 	public static ArrayList<Rock> getNotPickedRocks(SQLiteDatabase database) { 
 		ArrayList<Rock> rocks = new ArrayList<Rock>();
 		String where = TableRocks.COL_PICKED + " = 'false'";
-		Cursor cursor = database.query(TableRocks.TABLE_NAME, TableRocks.COLUMNS, null, null, null, null, null);
+		Cursor cursor = database.query(TableRocks.TABLE_NAME, TableRocks.COLUMNS, where, null, null, null, null);
 		while(cursor.moveToNext()) {
 			rocks.add(Rock.cursorToRock(cursor));
 		}
 		cursor.close();
 		return rocks;
 	}
-
-	public void save(SQLiteDatabase database) {		
-		//Find in database, see what changed
-		Rock oldRock = Rock.getRockById(database, this.getId());
-				
+	
+	public static void save(RockData data, SQLiteDatabase database){
+		//Adds or updates rock in database from its data
+		Rock oldRock = Rock.getRockById(database, data.getId());
 		ContentValues vals = new ContentValues();
 		//vals.put(TableRocks.COL_REMOTE_ID, this.getTrelloId()); //IDK this messed it up
-		if(oldRock == null || oldRock.getLat() != this.getLat()) vals.put(TableRocks.COL_LAT, this.getLat());
-		if(oldRock == null || oldRock.getLon() != this.getLon()) vals.put(TableRocks.COL_LNG, this.getLon());
-		if(oldRock == null || oldRock.getLon() != this.getLon() || oldRock.getLat() != this.getLat()) vals.put(TableRocks.COL_POS_CHANGED, TrelloObject.DateToUnix(this.getPosChanged()));
+		if(oldRock == null || oldRock.getLat() != data.getLat()) vals.put(TableRocks.COL_LAT, data.getLat());
+		if(oldRock == null || oldRock.getLon() != data.getLon()) vals.put(TableRocks.COL_LNG, data.getLon());
+		if(oldRock == null || oldRock.getLon() != data.getLon() || oldRock.getLat() != data.getLat()) vals.put(TableRocks.COL_POS_CHANGED, TrelloObject.DateToUnix(data.getPosChanged()));
 		
-		if(oldRock == null || oldRock.isPicked() != this.isPicked()){
-			vals.put(TableRocks.COL_PICKED, Boolean.toString(this.isPicked()));
-			vals.put(TableRocks.COL_PICKED_CHANGED, TrelloObject.DateToUnix(this.getPickedChanged()));
+		if(oldRock == null || oldRock.isPicked() != data.isPicked()){
+			vals.put(TableRocks.COL_PICKED, Boolean.toString(data.isPicked()));
+			vals.put(TableRocks.COL_PICKED_CHANGED, TrelloObject.DateToUnix(data.getPickedChanged()));
 			Log.d("RockApp Rock save", "Picked changed");
 		}
-		if(oldRock == null || oldRock.getComments() == null && this.getComments() != null || oldRock.getComments() != null && oldRock.getComments().contentEquals(this.getComments()) == false){
-			vals.put(TableRocks.COL_COMMENTS, this.getComments());
-			vals.put(TableRocks.COL_COMMENTS_CHANGED, TrelloObject.DateToUnix(this.getCommentsChanged()));
+		if(oldRock == null || oldRock.getComments() == null && data.getComments() != null || oldRock.getComments() != null && oldRock.getComments().contentEquals(data.getComments()) == false){
+			vals.put(TableRocks.COL_COMMENTS, data.getComments());
+			vals.put(TableRocks.COL_COMMENTS_CHANGED, TrelloObject.DateToUnix(data.getCommentsChanged()));
 			Log.d("RockApp Rock save", "Comment changed");
 		}
-		if(oldRock == null || oldRock.getPicture() == null && this.getPicture() != null || oldRock.getPicture() != null && oldRock.getPicture().contentEquals(this.getPicture()) == false){
-			vals.put(TableRocks.COL_PICTURE_PATH, this.getPicture());
-			vals.put(TableRocks.COL_PICTURE_CHANGED, TrelloObject.DateToUnix(this.getPictureChanged()));
+		if(oldRock == null || oldRock.getPicture() == null && data.getPicture() != null || oldRock.getPicture() != null && oldRock.getPicture().contentEquals(data.getPicture()) == false){
+			vals.put(TableRocks.COL_PICTURE_PATH, data.getPicture());
+			vals.put(TableRocks.COL_PICTURE_CHANGED, TrelloObject.DateToUnix(data.getPictureChanged()));
 			Log.d("RockApp Rock save", "Picture changed");
 		}
 
-		if(oldRock == null || oldRock.getDeleted() != this.getDeleted()){
+		if(oldRock == null || oldRock.getDeleted() != data.isDeleted()){
 			int intDeleted = 0;
-			if(this.getDeleted() == true){
+			if(data.isDeleted() == true){
 				intDeleted = 1;
 			}
 			vals.put(TableRocks.COL_DELETED, intDeleted);
 		}
 				
-		if(this.id < 0) {
+		if(data.id < 0) {
 			//New rock
 			long newid = database.insert(TableRocks.TABLE_NAME, null, vals);
 			if(newid != -1){
-				this.id = (int) newid;
+				data.id = (int) newid;
 			}
 		} else {
 			//Update rock
 			if(vals.size() > 0){
-				String where = TableRocks.COL_ID + " = " + this.getId();
+				String where = TableRocks.COL_ID + " = " + data.getId();
 				database.update(TableRocks.TABLE_NAME, vals, where, null);
 			}
 		}
-		
-		this.listener.RockPopulateMap(this);
+	}
+
+	public void save(SQLiteDatabase database) {		
+		Rock.save(this.data, database);
 	}
 	
 	/*
@@ -272,13 +251,6 @@ public class Rock {
 		rock.setPicture(cursor.getString(cursor.getColumnIndex(TableRocks.COL_PICTURE_PATH)));
 		rock.setPictureChanged(TrelloObject.UnixToDate(cursor.getLong(cursor.getColumnIndex(TableRocks.COL_PICTURE_CHANGED))));
 
-		
-		int intHasSynced = cursor.getInt(cursor.getColumnIndex(TableRocks.COL_HAS_SYNCED));
-		if(intHasSynced == 1){
-			rock.setHasSynced(true);
-		} else {
-			rock.setHasSynced(false);
-		}
 		//TODO ****** THIS IS WRONG ***********
 		int intDeleted = cursor.getInt(cursor.getColumnIndex(TableRocks.COL_DELETED));
 		if(intDeleted == 1){
@@ -289,140 +261,137 @@ public class Rock {
 		return rock;
 	}
 	
-	public void setListener(RockListener listener){
-		this.listener = listener;
-	}
 	
 	public int getId() {
-		return this.id;
+		return this.data.id;
 	}
 
 	public void setId(int id) {
-		this.id = id;
+		this.data.id = id;
 	}
 
-	public String getTrelloId() { //TODO
-		return this.remoteId;
+	public String getTrelloId() {
+		return this.data.remoteId;
 	}
 
-	public void setTrelloId(String remoteId) { //TODO
-		this.remoteId = remoteId;
+	public void setTrelloId(String remoteId) {
+		this.data.remoteId = remoteId;
 	}
 
 	public double getLat() {
-		return this.lat;
+		return this.data.lat;
 	}
 
 	public void setLat(double lat) {
-		this.lat = lat;
+		this.data.lat = lat;
 		this.setPosChanged(new Date()); //TODO Internet
 	}
 	
 	public double getLon() {
-		return this.lon;
+		return this.data.lon;
 	}
 
 	public void setLon(double lon) {
-		this.lon = lon;
+		this.data.lon = lon;
 		this.setPosChanged(new Date()); //TODO Internet
 	}
 	
 	public boolean isPicked() {
-		return this.picked;
+		return this.data.picked;
 	}
 
 	public void setPicked(boolean picked) {
-		this.picked = picked;
+		this.data.picked = picked;
 		this.setPickedChanged(new Date()); //TODO Internet
 	}
 
 	public String getComments() {
-		return this.comments;
+		return this.data.comments;
 	}
 
 	public void setComments(String comments) {
-		this.comments = comments;
+		this.data.comments = comments;
 		this.setCommentsChanged(new Date()); //TODO Internet
 	}
 
 	public String getPicture() {
-		return this.picture;
+		return this.data.picture;
 	}
 
 	public void setPicture(String picture) {
-		this.picture = picture;
+		this.data.picture = picture;
 	}
 	
 	public void deletePicture() {
-		if(this.picture != null) {
-			File pic = new File(this.picture);
+		if(this.data.picture != null) {
+			File pic = new File(this.data.picture);
 			pic.delete();
-			this.picture = null;
+			this.data.picture = null;
 		}
 	}
 	
 	public boolean getDeleted() {
-		return this.deleted;
+		return this.data.deleted;
 	}
 	
 	public void setDeleted(boolean deleted) {
-		this.deleted = deleted;
-	}
-	
-	public boolean getHasSynced(){
-		return this.hasSynced;
-	}
-	
-	public void setHasSynced(boolean hasSynced){
-		this.hasSynced = hasSynced;
-	}
+		this.data.deleted = deleted;
+	}	
 
 	public Date getPosChanged() {
-		return posChanged;
+		return this.data.posChanged;
 	}
 
 	public void setPosChanged(Date posChanged) {
-		this.posChanged = posChanged;
+		this.data.posChanged = posChanged;
 	}
 
 	public Date getPickedChanged() {
-		return pickedChanged;
+		return this.data.pickedChanged;
 	}
 
 	public void setPickedChanged(Date pickedChanged) {
-		this.pickedChanged = pickedChanged;
+		this.data.pickedChanged = pickedChanged;
 	}
 
 	public Date getCommentsChanged() {
-		return commentsChanged;
+		return this.data.commentsChanged;
 	}
 
 	public void setCommentsChanged(Date commentsChanged) {
-		this.commentsChanged = commentsChanged;
+		this.data.commentsChanged = commentsChanged;
 	}
 
 	public Date getPictureChanged() {
-		return pictureChanged;
+		return this.data.pictureChanged;
 	}
 
 	public void setPictureChanged(Date pictureChanged) {
-		this.pictureChanged = pictureChanged;
+		this.data.pictureChanged = pictureChanged;
 	}
 
 	public String getPictureURL() {
-		return pictureURL;
+		return this.data.pictureURL;
 	}
 
 	public void setPictureURL(String pictureURL) {
-		this.pictureURL = pictureURL;
+		this.data.pictureURL = pictureURL;
 	}
 
 	public String getPictureRemoteId() {
-		return pictureRemoteId;
+		return this.data.pictureRemoteId;
 	}
 
 	public void setPictureRemoteId(String pictureRemoteId) {
-		this.pictureRemoteId = pictureRemoteId;
+		this.data.pictureRemoteId = pictureRemoteId;
 	}
 	
+	
+	public RockData getData(){
+		return this.data;
+	}
+	
+	public void setData(RockData data){
+		this.data = data;
+	}
 }

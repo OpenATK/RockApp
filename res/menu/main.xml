@@ -20,7 +20,7 @@
         android:showAsAction="always" 
 	    android:icon="@drawable/list"
         android:title="@string/menu_list"
-        android:visible="true"  />
+        android:visible="false"  />
     
     <!-- Give a radiobox choice of what type of rocks to display on the screen -->
     <item

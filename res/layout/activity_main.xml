@@ -10,9 +10,14 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />-->
         
-        <fragment
+        <!--<fragment
 	        android:id="@+id/map"
 	        android:name="com.openatk.rockapp.openatklib.atkSupportMapFragment"
+	        android:layout_width="match_parent"
+	        android:layout_height="match_parent" />-->
+	    <fragment
+	        android:id="@+id/map"
+	        android:name="com.openatk.openatklib.atkmap.ATKSupportMapFragment"
 	        android:layout_width="match_parent"
 	        android:layout_height="match_parent" />
         

@@ -7,6 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteDatabase;
@@ -15,6 +16,10 @@ import android.preference.PreferenceManager;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
+import com.openatk.libtrello.TrelloBoard;
+import com.openatk.libtrello.TrelloCard;
+import com.openatk.libtrello.TrelloContentProvider;
+import com.openatk.libtrello.TrelloList;
 import com.openatk.rockapp.MainActivity;
 import com.openatk.rockapp.db.DatabaseHelper;
 import com.openatk.rockapp.db.TableRocks;
@@ -67,7 +72,8 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		//Return all custom data as TrelloLists
 		//RockApp has 2 lists
 		List<TrelloList> lists = new ArrayList<TrelloList>();
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+		
+		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		
 		TrelloList listPicked = new TrelloList();
 		if(prefs.contains("rockListPickedLocalId")){
@@ -149,10 +155,10 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		//Return all custom data as boards, always return boards
 		//RockApp has 1 board
 		List<TrelloBoard> boards = new ArrayList<TrelloBoard>();
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		TrelloBoard trelloBoard = new TrelloBoard();
 		if(prefs.contains("rockBoardLocalId")){
-			Log.d("MyTrelloContentProvider", "Has local id, returning board");
+			Log.d("MyTrelloContentProvider", "Has local id, giving current local board");
 			Log.d("MyTrelloContentProvider", "Its trelloId:" + prefs.getString("rockBoardTrelloId", ""));
 
 			trelloBoard.setLocalId(prefs.getString("rockBoardLocalId", "0"));
@@ -169,7 +175,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 			trelloBoard.setLastSyncDate(prefs.getString("rockBoardSyncDate", ""));
 			trelloBoard.setLastTrelloActionDate(prefs.getString("rockBoardTrelloActionDate", ""));
 		} else {		
-			Log.d("MyTrelloContentProvider", "No local id, creating board");
+			Log.d("MyTrelloContentProvider", "No local id, creating new local board");
 			Date theDate = new Date();			
 			String localId = "0";
 			String trelloId = "";
@@ -227,7 +233,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		
 		//Board id
 		if(tcard.getBoardId() != null){
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+			SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 			if(tcard.getBoardId().contentEquals(prefs.getString("rockBoardTrelloId", "something")) == false){
 				delete = true;
 			}
@@ -236,7 +242,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		//List id
 		if(tcard.getListId() != null){
 			//Set picked
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+			SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 			if(prefs.getString("rockListPickedTrelloId", "").contentEquals(tcard.getListId())) {
 				rockValues.put(TableRocks.COL_PICKED, "true");
 			} else if(prefs.getString("rockListFieldTrelloId", "").contentEquals(tcard.getListId())) {
@@ -284,7 +290,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 				if(trelloClosed){
 					delete = true;
 				} else {
-					rockValues.put(TableRocks.COL_DELETED, 0);
+					rockValues.put(TableRocks.COL_DELETED, 0); //TODO idk if we need this
 				}
 			}
 			//TODO closed_changed in TableRocks?
@@ -309,7 +315,6 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 			dbHelper.close();
 		}
 		
-		
 		LocalBroadcastManager.getInstance(this.getContext()).sendBroadcast(new Intent(MainActivity.INTENT_ROCKS_UPDATED));
 		return 1;
 	}
@@ -317,7 +322,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 	@Override
 	public int updateList(TrelloList tlist){
 		Log.d("MyTrelloContentProvider", "updateList()");
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		Boolean isListPicked = false;
 		Boolean isListField = false;
 		if(tlist.getLocalId() != null){
@@ -354,7 +359,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 				//Deleting no need to set name_changed date
 			} else {
 				//Might as well update name_changed even tho it doesn't matter in this case
-				new_nameChanged = tlist.name_changed;
+				new_nameChanged = tlist.getName_changed();
 			}
 		}
 		//TrelloId
@@ -368,7 +373,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 				//Delete
 				delete = true;
 			} else {
-				new_closedChanged = tlist.closed_changed;
+				new_closedChanged = tlist.getClosed_changed();
 			}
 		}
 		//BoardId
@@ -412,7 +417,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		Log.d("MyTrelloContentProvider", "updateOrganization()");
 		Log.d("MyTrelloContentProvider", "updateOrganization old:" + oldOrganizationId + " new:" + newOrganizationId);
 		//Organization has changed, delete everything
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		SharedPreferences.Editor editor = prefs.edit();
 		editor.remove("rockBoardTrelloId"); //Will cause it to be remade
 		//Delete lists
@@ -432,7 +437,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 	@Override
 	public int updateBoard(TrelloBoard tBoard){
 		Log.d("MyTrelloContentProvider", "updateBoard()");
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		Boolean isIt = false;
 		if(tBoard.getLocalId() != null){
 			if(tBoard.getLocalId().contentEquals(prefs.getString("rockBoardLocalId", "something"))){
@@ -446,7 +451,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		if(isIt){
 			Boolean delete = false;
 			SharedPreferences.Editor editor = prefs.edit();
-			if(tBoard.getId() != null){
+			if(tBoard.getId() != null && tBoard.getId().contentEquals(prefs.getString("rockBoardTrelloId", "something")) == false){
 				editor.putString("rockBoardTrelloId", tBoard.getId());
 				Log.d("MyTrelloContentProvider", "updateBoard new trello id:" + tBoard.getId());
 			}
@@ -554,7 +559,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		}
 		if(tcard.getListId() != null){
 			//Set picked
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+			SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 			if(prefs.getString("rockListPickedTrelloId", "").contentEquals(tcard.getListId())) {
 				Log.d("SyncController - insertCard","Rock Picked");
 				rockValues.put(TableRocks.COL_PICKED, "true");
@@ -587,7 +592,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		//TODO check if we have this one already just like above...
 		
 		//Check to see if this matches a list we want, if we don't have them already
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		if(tList.getName() != null && tList.getName().contentEquals("Rocks Picked Up")){
 			if(prefs.getString("rockListPickedTrelloId", "").contentEquals("")){
 				SharedPreferences.Editor editor = prefs.edit();
@@ -610,9 +615,12 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 	@Override
 	public void insertBoard(TrelloBoard tBoard){
 		//Check if this is our board if we don't have it already
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.getContext());
+		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		if(tBoard.getName().contentEquals("RockApp - Test")){
+			Log.d("SyncController - insertBoard", "Found new board on trello named the same as ours.");
+
 			if(prefs.getString("rockBoardTrelloId", "").contentEquals("")){
+				Log.d("SyncController - insertBoard", "This is our trello board. Should we use it or make our own? PROMPT");
 				SharedPreferences.Editor editor = prefs.edit();
 				editor.putString("rockBoardTrelloId", tBoard.getId());
 				editor.putString("rockBoardName", tBoard.getName());
@@ -621,6 +629,8 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 				editor.putString("rockBoardSyncDate", tBoard.getLastSyncDate());
 				editor.putString("rockBoardTrelloActionDate", tBoard.getLastTrelloActionDate());
 				editor.commit();
+			} else {
+				Log.d("SyncController - insertBoard", "We are already syncing to a Trello board. Ignore it.");
 			}
 		}
 	}

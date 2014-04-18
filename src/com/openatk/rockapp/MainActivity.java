@@ -6,14 +6,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import pl.mg6.android.maps.extensions.ClusteringSettings;
-import pl.mg6.android.maps.extensions.GoogleMap;
-import pl.mg6.android.maps.extensions.GoogleMap.OnCameraChangeListener;
-import pl.mg6.android.maps.extensions.GoogleMap.OnMapClickListener;
-import pl.mg6.android.maps.extensions.GoogleMap.OnMarkerClickListener;
-import pl.mg6.android.maps.extensions.GoogleMap.OnMarkerDragListener;
-import pl.mg6.android.maps.extensions.Marker;
-import pl.mg6.android.maps.extensions.SupportMapFragment;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -41,30 +33,29 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
-import com.google.android.gms.maps.model.LatLngBounds.Builder;
+import com.openatk.libtrello.TrelloContentProvider;
+import com.openatk.openatklib.atkmap.ATKMap;
+import com.openatk.openatklib.atkmap.ATKSupportMapFragment;
+import com.openatk.openatklib.atkmap.listeners.ATKMapClickListener;
+import com.openatk.openatklib.atkmap.listeners.ATKPointClickListener;
+import com.openatk.openatklib.atkmap.listeners.ATKPointDragListener;
+import com.openatk.openatklib.atkmap.views.ATKPointView;
+import com.openatk.rockapp.RockMenu.RockMenuListener;
 import com.openatk.rockapp.db.DatabaseHelper;
 import com.openatk.rockapp.models.Rock;
-import com.openatk.rockapp.models.Rock.RockListener;
-import com.openatk.rockapp.openatklib.atkMap;
-import com.openatk.rockapp.openatklib.atkPolygonView;
-import com.openatk.rockapp.openatklib.atkSupportMapFragment;
-import com.openatk.rockapp.trello.TrelloContentProvider;
-import com.openatk.rockapp.R;
-import com.openatk.rockapp.RockMenu.RockMenuListener;
 
 public class MainActivity extends FragmentActivity implements
-		OnMarkerClickListener, OnMapClickListener, OnMarkerDragListener,
-		OnCameraChangeListener, RockMenuListener, RockListener {
+		RockMenuListener, ATKMapClickListener, ATKPointClickListener, ATKPointDragListener {
 
 	
 	private DatabaseHelper dbHelper;
 
-	private GoogleMap map;
-	private atkMap atkmap;
+	private ATKMap atkmap;
+	private ATKSupportMapFragment atkmapFragment;
 
 	private UiSettings mapSettings;
 	private MarkerHandler markerHandler;
@@ -100,7 +91,6 @@ public class MainActivity extends FragmentActivity implements
 	public static final String ACTION_UPDATE_MAP = "com.openatk.rockapp.UPDATE_MAP";
 
 	private List<LatLng> undoMoves = new ArrayList<LatLng>();
-	private LatLng dragPosStart;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -110,17 +100,16 @@ public class MainActivity extends FragmentActivity implements
 		dbHelper = new DatabaseHelper(this);
 		
 		FragmentManager fm = getSupportFragmentManager();
-		atkSupportMapFragment f = (atkSupportMapFragment) fm.findFragmentById(R.id.map);
+		atkmapFragment = (ATKSupportMapFragment) fm.findFragmentById(R.id.map);
 
 		if (savedInstanceState == null) {
 			// First incarnation of this activity.
-			f.setRetainInstance(true);
+			atkmapFragment.setRetainInstance(true);
 		} else {
 			// Reincarnated activity. The obtained map is the same map instance
 			// in the previous
 			// activity life cycle. There is no need to reinitialize it.
-			map = f.getExtendedMap();
-			atkmap = f.getAtkMap();
+			atkmap = atkmapFragment.getAtkMap();
 		}
 		
 		checkGPS();
@@ -135,11 +124,11 @@ public class MainActivity extends FragmentActivity implements
 
 		
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		mRockState = prefs.getInt("mRockState", STATE_ROCKS_NOT_PICKED_UP);
+		mRockState = prefs.getInt("mRockState", STATE_ROCKS_BOTH);
+
 		// Restore state from savedInstanceState
 		if (savedInstanceState != null) {
 			mCurrentRockSelected = savedInstanceState.getInt("rock_edit.currentRock", Rock.BLANK_ROCK_ID);
-			
 			switch (savedInstanceState.getInt("state", STATE_DEFAULT)) {
 				case STATE_ROCK_EDIT:
 					// Get RockId and restore view states for setState()
@@ -149,7 +138,6 @@ public class MainActivity extends FragmentActivity implements
 					database.close();
 					dbHelper.close();
 					
-					theRock.setListener(this);
 					slideMenu.editRock(theRock);
 					break;
 			}
@@ -160,7 +148,6 @@ public class MainActivity extends FragmentActivity implements
 			// Otherwise set default initial state
 			setState(STATE_DEFAULT);
 			// TODO Zoom all markers (rocks)
-			mRockState = STATE_ROCKS_NOT_PICKED_UP;
 		}
 		setUpMapIfNeeded();
 	}
@@ -180,7 +167,7 @@ public class MainActivity extends FragmentActivity implements
 		checkGPS();
 		// Listen for image requests from RockMenu
 		LocalBroadcastManager.getInstance(this).registerReceiver(mapBroadcastReciever, new IntentFilter(MainActivity.INTENT_ROCKS_UPDATED));
-		markerHandler.populateMap(mCurrentRockSelected);
+		//TODO markerHandler.populateMap(mCurrentRockSelected);
 	}
 
 	@Override
@@ -189,52 +176,53 @@ public class MainActivity extends FragmentActivity implements
 		LocalBroadcastManager.getInstance(this).unregisterReceiver(mapBroadcastReciever);
 
 		// Save location
-		CameraPosition myCam = map.getCameraPosition();
+		CameraPosition myCam = atkmap.getCameraPosition();
 		if(myCam != null){
 			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 			SharedPreferences.Editor editor = prefs.edit();
 			LatLng where = myCam.target;
 			editor.putFloat("StartupLat", (float) where.latitude);
 			editor.putFloat("StartupLng",(float) where.longitude); 
-			editor.putFloat("StartupZoom",(float) map.getCameraPosition().zoom); 
+			editor.putFloat("StartupZoom",(float) atkmap.getCameraPosition().zoom); 
+			editor.putFloat("StartupZoom",(float) atkmap.getCameraPosition().zoom); 
 			editor.commit();
 		}
 	}
 
 	private void setUpMapIfNeeded() {
-		if (map == null) {
-			map = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getExtendedMap();
-			atkmap = ((atkSupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getAtkMap();
+		if (atkmap == null) {
+			//Map is null try to find it
+			atkmap = ((ATKSupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getAtkMap();
 		}
-		markerHandler = new MarkerHandler(this, map, dbHelper, mCurrentRockSelected);
+		markerHandler = new MarkerHandler(this, atkmap, dbHelper);
 		slideMenu.setMarkerHandler(markerHandler);
-		if (map != null) {
+
+		
+		if (atkmapFragment.getRetained() == false) {
+			//New map, we need to set it up
 			setUpMap();
-			map.setOnMarkerDragListener(this);
-			//map.setOnMarkerClickListener(this); TODO
-			//map.setOnMapClickListener(this); TODO
-			map.setOnCameraChangeListener(this);
+
 			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 			Float startLat = prefs.getFloat("StartupLat", START_LAT);
 			Float startLng = prefs.getFloat("StartupLng", START_LNG);
 			Float startZoom = prefs.getFloat("StartupZoom", START_ZOOM);
-			map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(startLat, startLng), startZoom));
+			atkmap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(startLat, startLng), startZoom));
 		}
+		
+		//Setup stuff for new activity
+		atkmap.setOnPointClickListener(this);
+		atkmap.setOnPointDragListener(this);
+		atkmap.setOnMapClickListener(this);
 	}
 
 	private void setUpMap() {
-		mapSettings = map.getUiSettings();
+		Log.d("MainActivity", "SetUpMap");
+		mapSettings = atkmap.getUiSettings();
 		mapSettings.setZoomControlsEnabled(false);
 		mapSettings.setMyLocationButtonEnabled(false);
 		mapSettings.setTiltGesturesEnabled(false);
-		map.setMyLocationEnabled(true);
-		map.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-		ClusteringSettings clusteringSettings = new ClusteringSettings();
-		clusteringSettings.clusterOptionsProvider(new MyClusterOptionsProvider(getResources()));
-		clusteringSettings.addMarkersDynamically(true);
-		clusteringSettings.clusterSize(96.0);
-		clusteringSettings.enabled(true);
-		map.setClustering(clusteringSettings);
+		atkmap.setMyLocationEnabled(true);
+		atkmap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
 		markerHandler.setRockState(mRockState);
 		markerHandler.populateMap(mCurrentRockSelected);
 	}
@@ -331,15 +319,15 @@ public class MainActivity extends FragmentActivity implements
 			break;
 
 		case R.id.gps:
-			Location myLoc = map.getMyLocation();
+			Location myLoc = atkmap.getMyLocation();
 			if (myLoc == null) {
 				Toast.makeText(this, R.string.location_wait, Toast.LENGTH_SHORT).show();
 			} else {
-				CameraPosition oldPos = map.getCameraPosition();
+				CameraPosition oldPos = atkmap.getCameraPosition();
 				CameraPosition newPos = new CameraPosition(new LatLng(
 						myLoc.getLatitude(), myLoc.getLongitude()),
-						map.getMaxZoomLevel(), oldPos.tilt, oldPos.bearing);
-				map.animateCamera(CameraUpdateFactory.newCameraPosition(newPos));
+						atkmap.getMaxZoomLevel(), oldPos.tilt, oldPos.bearing);
+				atkmap.animateCamera(CameraUpdateFactory.newCameraPosition(newPos));
 			}
 			result = true;
 			break;
@@ -364,13 +352,9 @@ public class MainActivity extends FragmentActivity implements
 
 		case R.id.list:
 			// showRockList();
-			if(atkmap == null){
-				Log.d("MainActivity", "atkmap is null");
-			}
-			atkPolygonView polygonView = atkmap.drawPolygon(0);
-			
 			result = true;
 			break;
+			
 		case R.id.rock_delete:
 			showConfirmRockDeleteAlert();
 			result = true;
@@ -445,7 +429,7 @@ public class MainActivity extends FragmentActivity implements
 		// set the new showHide, update the map, and update the action bar
 		mRockState = type;
 		markerHandler.setRockState(mRockState);
-		markerHandler.populateMap(mCurrentRockSelected);
+		//TODO markerHandler.populateMap(mCurrentRockSelected);
 		
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		SharedPreferences.Editor editor = prefs.edit();
@@ -456,36 +440,38 @@ public class MainActivity extends FragmentActivity implements
 	}
 
 	private void addRock() {
-		Location myLoc = map.getMyLocation();
+		Location myLoc = atkmap.getMyLocation();
 		LatLng where = null;
 		if (myLoc == null) {
-			where = map.getCameraPosition().target;
+			where = atkmap.getCameraPosition().target;
 		} else {
 			// See if location is on screen
 			LatLng myLatLng = new LatLng(myLoc.getLatitude(),
 					myLoc.getLongitude());
-			if (map.getProjection().getVisibleRegion().latLngBounds
-					.contains(myLatLng)) {
+			if (atkmap.getProjection().getVisibleRegion().latLngBounds.contains(myLatLng)) {
 				// Location is on screen set marker there
 				where = myLatLng;
 			} else {
 				// Location is off screen, use center of screen
-				where = map.getCameraPosition().target;
+				where = atkmap.getCameraPosition().target;
 			}
 		}
+		
 		Log.d("MainActivity", "Add rock");
 		// Rock and save in DB (triggering it to display on the map)
-		Rock rock = new Rock(this, where.latitude, where.longitude, false);
+		Rock rock = new Rock(where.latitude, where.longitude, false);
 		rock.setTrelloId("");
-		rock.setHasSynced(false);
 		rock.setPosChanged(new Date());
 		
+		//Save rock in database
 		SQLiteDatabase database = dbHelper.getWritableDatabase();
 		rock.save(database);
 		database.close();
 		dbHelper.close();
 		
-
+		//Show rock on map
+		this.markerHandler.updatePointView(rock.getData(), true);
+		
 		slideMenu.editRock(rock);
 		setState(STATE_ROCK_EDIT);
 		selectRock(rock.getId());
@@ -546,7 +532,8 @@ public class MainActivity extends FragmentActivity implements
 			// Get the result of taking a picture
 			case REQUEST_PICTURE:
 				if (resultCode == RESULT_OK) {
-					Marker marker = markerHandler.getMarkerByRockId(mCurrentRockSelected);
+					//TODO
+					/*Marker marker = markerHandler.getMarkerByRockId(mCurrentRockSelected);
 					if (marker != null) {
 						Rock rock = (Rock) marker.getData();
 						if (rock != null) {
@@ -561,13 +548,13 @@ public class MainActivity extends FragmentActivity implements
 							dbHelper.close();
 							slideMenu.editRock(rock);
 						}
-					}
+					}*/
 				}
 				break;
 		}
 	}
 
-	@Override
+	/*@Override
 	public boolean onMarkerClick(Marker marker) {
 		// When a marker is clicked, return true to prevent info window and
 		// centering on marker
@@ -610,7 +597,7 @@ public class MainActivity extends FragmentActivity implements
 			}
 		}
 		return true;
-	}
+	}*/
 
 	@Override
 	public void onMapClick(LatLng position) {
@@ -662,7 +649,9 @@ public class MainActivity extends FragmentActivity implements
 		builder.create().show();
 	}
 
-	@Override
+	
+	//TODO add to lib?
+	/*@Override
 	public void onMarkerDragStart(Marker marker) {
 		// Save original location
 		Log.d("MainActivity", "Start drag");
@@ -674,15 +663,17 @@ public class MainActivity extends FragmentActivity implements
 		Log.d("MainActivity", "RockLat:" + Double.toString(mRock.getLat()));
 		Log.d("MainActivity", "MarkerLng:" + Double.toString(marker.getPosition().longitude));
 		Log.d("MainActivity", "RockLng:" + Double.toString(mRock.getLon()));
-	}
+	}*/
 
-	@Override
+	//TODO add to lib?
+	/*@Override
 	public void onMarkerDrag(Marker marker) {
 		// TODO Auto-generated method stub
 
-	}
+	}*/
 
-	@Override
+	//TODO add to lib?
+	/*@Override
 	public void onMarkerDragEnd(Marker marker) {
 		// Show undo option in ActionBar
 		Log.d("MainActivity", "Stop drag");
@@ -702,10 +693,11 @@ public class MainActivity extends FragmentActivity implements
 			// Just changed from empty
 			this.invalidateOptionsMenu();
 		}
-	}
+	}*/
 
+	//TODO
 	private void undoRockMove() {
-		if (mCurrentRockSelected != Rock.BLANK_ROCK_ID
+		/*if (mCurrentRockSelected != Rock.BLANK_ROCK_ID
 				&& undoMoves.isEmpty() == false) {
 			Marker theMarker = markerHandler.getMarkerByRockId(mCurrentRockSelected);
 			if (theMarker != null) {
@@ -721,9 +713,10 @@ public class MainActivity extends FragmentActivity implements
 		if (undoMoves.isEmpty()) {
 			// Hide undo option in ActionBar
 			this.invalidateOptionsMenu();
-		}
+		}*/
 	}
 
+	/*
 	@Override
 	public void onCameraChange(CameraPosition cameraPosition) {
 		if (map.getMaxZoomLevel() == cameraPosition.zoom) {
@@ -742,7 +735,8 @@ public class MainActivity extends FragmentActivity implements
 			clusteringSettings.enabled(true);
 			map.setClustering(clusteringSettings);
 		}
-	}
+	}*/
+	
 	private void checkGPS(){
 		final LocationManager manager = (LocationManager) getSystemService( Context.LOCATION_SERVICE );
 	    if ( !manager.isProviderEnabled( LocationManager.GPS_PROVIDER ) ) {
@@ -790,8 +784,45 @@ public class MainActivity extends FragmentActivity implements
 	}
 
 	@Override
-	public void RockPopulateMap(Rock theRock) {
-		//Add rock on screen or change it
-		markerHandler.populateMap(mCurrentRockSelected);
+	public boolean onPointClick(ATKPointView pointView) {
+		// Single point, bring up edit screen (slideMenu)
+		SQLiteDatabase database = dbHelper.getReadableDatabase();
+		Rock theRock = 	Rock.getRockById(database, (Integer)pointView.getAtkPoint().id);
+		dbHelper.close();
+		
+		if (theRock == null) {
+			Log.e("MainActivity", "Clicked marker with null marker data");
+		} else {
+			selectRock(theRock.getId());
+			slideMenu.editRock(theRock);
+			setState(STATE_ROCK_EDIT);
+		}
+		return false;
+	}
+
+	@Override
+	public boolean onPointDrag(ATKPointView pointView) {
+		return false;
+	}
+
+	@Override
+	public boolean onPointDragEnd(ATKPointView pointView) {
+		//Done dragging save point to database		
+		SQLiteDatabase database = dbHelper.getWritableDatabase();
+		Rock theRock = 	Rock.getRockById(database, (Integer)pointView.getAtkPoint().id);
+		LatLng newPos = pointView.getAtkPoint().position;
+		theRock.setLat(newPos.latitude);
+		theRock.setLon(newPos.longitude);
+		theRock.save(database);
+		database.close();
+		dbHelper.close();
+		
+		this.markerHandler.updatePointView(theRock.getData(), true); //Updates the data of the pointView
+		return true;
+	}
+
+	@Override
+	public boolean onPointDragStart(ATKPointView pointView) {
+		return false;
 	}
 }
