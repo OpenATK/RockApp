@@ -115,7 +115,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 			listField.setId(prefs.getString("rockListFieldTrelloId", ""));
 			listField.setName(prefs.getString("rockListFieldName", ""));
 			listField.setName_changed(TrelloContentProvider.stringToDate(prefs.getString("rockListFieldName_change", "")));
-			listField.setName_changed(TrelloContentProvider.stringToDate(prefs.getString("rockListFieldClosed_change", "")));
+			listField.setClosed_changed(TrelloContentProvider.stringToDate(prefs.getString("rockListFieldClosed_change", "")));
 			listField.setBoardId(prefs.getString("rockBoardTrelloId", ""));
 		} else {			
 			Date theDate = new Date();	//TODO from Internet
@@ -207,13 +207,13 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 	
 	@Override
 	public int updateCard(TrelloCard tcard){
-		Log.d("MyTrelloContentProvider - updateCard", "updating card:" + tcard.getLocalId());
+		Log.d("MyTrelloContentProvider - updateCard", "updating card:" + tcard.getSource().getLocalId());
 		Log.d("MyTrelloContentProvider - updateCard", "updating card:" + tcard.getId());
 		Rock rock = null;
 		dbHelper = new DatabaseHelper(getContext());
 		SQLiteDatabase database = dbHelper.getReadableDatabase();
-		if(tcard.getLocalId() != null) {
-			rock = Rock.getRockById(database, Integer.parseInt(tcard.getLocalId()));
+		if(tcard.getSource().getLocalId() != null) {
+			rock = Rock.getRockById(database, Integer.parseInt(tcard.getSource().getLocalId()));
 		} else  {
 			rock = Rock.getRockByTrelloId(database, tcard.getId());
 		}
@@ -305,7 +305,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 			database.delete(TableRocks.TABLE_NAME, where, null);
 			database.close();
 			dbHelper.close();
-		} else {
+		} else if(rockValues.size() > 0) {
 			//Update this rock in local db
 			Log.d("MyTrelloContentProvider - updateCard", "Updating in db");
 			database = dbHelper.getWritableDatabase();
@@ -313,6 +313,8 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 			database.update(TableRocks.TABLE_NAME, rockValues, where, null);
 			database.close();
 			dbHelper.close();
+		} else {
+			Log.d("MyTrelloContentProvider - updateCard", "Nothing to update.");
 		}
 		
 		LocalBroadcastManager.getInstance(this.getContext()).sendBroadcast(new Intent(MainActivity.INTENT_ROCKS_UPDATED));
@@ -325,10 +327,10 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		Boolean isListPicked = false;
 		Boolean isListField = false;
-		if(tlist.getLocalId() != null){
-			if(tlist.getLocalId().contentEquals(prefs.getString("rockListPickedLocalId", ""))){
+		if(tlist.getSource().getLocalId() != null){
+			if(tlist.getSource().getLocalId().contentEquals(prefs.getString("rockListPickedLocalId", ""))){
 				isListPicked = true;
-			} else if(tlist.getLocalId().contentEquals(prefs.getString("rockListFieldLocalId", ""))){
+			} else if(tlist.getSource().getLocalId().contentEquals(prefs.getString("rockListFieldLocalId", ""))){
 				isListField = true;
 			}			
 		} else if(tlist.getId() != null){
@@ -419,7 +421,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		//Organization has changed, delete everything
 		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		SharedPreferences.Editor editor = prefs.edit();
-		editor.remove("rockBoardTrelloId"); //Will cause it to be remade
+		editor.remove("rockBoardLocalId"); //Will cause it to be remade
 		//Delete lists
 		editor.remove("rockListPickedLocalId"); //Will cause it to be remade
 		editor.remove("rockListFieldLocalId"); //Will cause it to be remade
@@ -439,12 +441,8 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		Log.d("MyTrelloContentProvider", "updateBoard()");
 		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
 		Boolean isIt = false;
-		if(tBoard.getLocalId() != null){
-			if(tBoard.getLocalId().contentEquals(prefs.getString("rockBoardLocalId", "something"))){
-				isIt = true;
-			}
-		} else if(tBoard.getId() != null){
-			if(tBoard.getId().contentEquals(prefs.getString("rockBoardTrelloId", "something"))){
+		if(tBoard.getSource().getLocalId() != null){
+			if(tBoard.getSource().getLocalId().contentEquals(prefs.getString("rockBoardLocalId", "something"))){
 				isIt = true;
 			}
 		}
