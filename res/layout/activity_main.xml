@@ -4,22 +4,11 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity" >
     
-	<!--<fragment
+    <fragment
         android:id="@+id/map"
-        android:name="pl.mg6.android.maps.extensions.SupportMapFragment"
+        android:name="com.openatk.openatklib.atkmap.ATKSupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />-->
-        
-        <!--<fragment
-	        android:id="@+id/map"
-	        android:name="com.openatk.rockapp.openatklib.atkSupportMapFragment"
-	        android:layout_width="match_parent"
-	        android:layout_height="match_parent" />-->
-	    <fragment
-	        android:id="@+id/map"
-	        android:name="com.openatk.openatklib.atkmap.ATKSupportMapFragment"
-	        android:layout_width="match_parent"
-	        android:layout_height="match_parent" />
+        android:layout_height="match_parent" />
         
 	<!-- A layout which has the views needed to edit a rock's meta data -->
 	<include layout="@layout/rock_edit_layout" />

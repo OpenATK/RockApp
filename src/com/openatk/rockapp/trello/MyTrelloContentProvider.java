@@ -43,7 +43,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 		//Return all custom data as cards
 		dbHelper = new DatabaseHelper(getContext());
 		SQLiteDatabase database = dbHelper.getWritableDatabase();
-		List<Rock> rocks = Rock.getRocks(database);		
+		List<Rock> rocks = Rock.getAllRocks(database);		
 		database.close();
 		Log.d("MyTrelloContentProvider - getCards", "# Rocks:" + Integer.toString(rocks.size()));
 		dbHelper.close();
@@ -179,7 +179,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 			Date theDate = new Date();			
 			String localId = "0";
 			String trelloId = "";
-			String name = "RockApp - Test";
+			String name = "OpenATK - RockApp";
 			String dateChange = TrelloContentProvider.dateToUnixString(theDate);
 			
 			SharedPreferences.Editor editor = prefs.edit();
@@ -495,6 +495,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 			
 			if(delete){
 				Log.d("MyTrelloContentProvider", "updateBoard deleting it");
+				editor.remove("rockBoardLocalId"); //Will cause it to be remade
 				editor.remove("rockBoardTrelloId"); //Will cause it to be remade
 				//Delete lists
 				editor.remove("rockListPickedLocalId"); //Will cause it to be remade
@@ -614,7 +615,7 @@ public class MyTrelloContentProvider extends TrelloContentProvider {
 	public void insertBoard(TrelloBoard tBoard){
 		//Check if this is our board if we don't have it already
 		SharedPreferences prefs = this.getContext().getSharedPreferences("com.openatk.rockapp", Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
-		if(tBoard.getName().contentEquals("RockApp - Test")){
+		if(tBoard.getName().contentEquals("OpenATK - RockApp")){
 			Log.d("SyncController - insertBoard", "Found new board on trello named the same as ours.");
 
 			if(prefs.getString("rockBoardTrelloId", "").contentEquals("")){

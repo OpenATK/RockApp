@@ -160,6 +160,7 @@ public class RockMenu extends SlideLayout implements OnClickListener {
 
 	public void delete() {
 		this.rock.setDeleted(true);
+		this.rock.setDeletedChanged(new Date());
 		SQLiteDatabase database = dbHelper.getWritableDatabase();
 		this.rock.save(database);
 		database.close();

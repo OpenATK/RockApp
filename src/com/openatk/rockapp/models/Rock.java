@@ -15,32 +15,11 @@ import android.util.Log;
 
 import com.openatk.libtrello.TrelloCard;
 import com.openatk.libtrello.TrelloObject;
+import com.openatk.rockapp.db.DatabaseHelper;
 import com.openatk.rockapp.db.TableRocks;
 
 /* A class which knows everything about a given rock */
 public class Rock {
-	
-	public static final String COL_ID = "_id";
-	public static final String COL_REMOTE_ID = "trello_id";
-	public static final String COL_HAS_SYNCED = "has_synced";
-	
-	public static final String COL_DELETED = "deleted";
-
-	public static final String COL_LAT = "lat";
-    public static final String COL_LNG = "lon";
-    public static final String COL_POS_CHANGED = "pos_changed";
-
-    public static final String COL_PICKED = "picked";
-    public static final String COL_PICKED_CHANGED = "picked_changed";
-
-    public static final String COL_COMMENTS = "comments";
-    public static final String COL_COMMENTS_CHANGED = "comments_changed";
-
-    public static final String COL_PICTURE_PATH = "picture";
-    public static final String COL_PICTURE_CHANGED = "picture_changed";
-    public static final String COL_PICTURE_URL = "picture_url";
-    public static final String COL_PICTURE_REMOTE_ID = "picture_remote_id";
-	
     //Rocks data
     private RockData data;
 	    
@@ -77,7 +56,8 @@ public class Rock {
 			//boardIdChanged
 			//Closed
 			card.setClosed(this.getDeleted());
-			//TODO closed changed
+			//Closed changed
+			card.setClosed_changed(this.getDeletedChanged());
 			//Name
 			card.setName("Lat: " + Double.toString(this.getLat()) + " Lng: " + Double.toString(this.getLon()));
 			card.setName_changed(this.getPosChanged());
@@ -209,6 +189,10 @@ public class Rock {
 			}
 			vals.put(TableRocks.COL_DELETED, intDeleted);
 		}
+		
+		if(oldRock == null || oldRock.getDeletedChanged() != data.getDeletedChanged()){
+			vals.put(TableRocks.COL_DELETED_CHANGED,  DatabaseHelper.dateToStringUTC(data.getDeletedChanged()));
+		}
 				
 		if(data.id < 0) {
 			//New rock
@@ -251,13 +235,13 @@ public class Rock {
 		rock.setPicture(cursor.getString(cursor.getColumnIndex(TableRocks.COL_PICTURE_PATH)));
 		rock.setPictureChanged(TrelloObject.UnixToDate(cursor.getLong(cursor.getColumnIndex(TableRocks.COL_PICTURE_CHANGED))));
 
-		//TODO ****** THIS IS WRONG ***********
 		int intDeleted = cursor.getInt(cursor.getColumnIndex(TableRocks.COL_DELETED));
 		if(intDeleted == 1){
 			rock.setDeleted(true);
 		} else {
 			rock.setDeleted(false);
 		}		
+		rock.setDeletedChanged(DatabaseHelper.stringToDateUTC(cursor.getString(cursor.getColumnIndex(TableRocks.COL_DELETED_CHANGED))));
 		return rock;
 	}
 	
@@ -334,9 +318,17 @@ public class Rock {
 		return this.data.deleted;
 	}
 	
+	public Date getDeletedChanged() {
+		return this.data.deletedChanged;
+	}
+	
 	public void setDeleted(boolean deleted) {
 		this.data.deleted = deleted;
 	}	
+	
+	public void setDeletedChanged(Date deletedChanged){
+		this.data.deletedChanged = deletedChanged;
+	}
 
 	public Date getPosChanged() {
 		return this.data.posChanged;

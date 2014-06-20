@@ -636,6 +636,8 @@ public class MainActivity extends FragmentActivity implements
 						setState(STATE_DEFAULT);
 						// Unselect rock
 						selectRock(Rock.BLANK_ROCK_ID);
+						//Delete from map
+						markerHandler.populateMap(mCurrentRockSelected);
 					}
 				});
 

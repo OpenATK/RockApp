@@ -7,6 +7,7 @@ public class RockData {
 	public int id;
 	public String remoteId;
 	public boolean deleted;
+	public Date deletedChanged;
 	public double lat;
 	public double lon;
 	public Date posChanged;
@@ -26,6 +27,7 @@ public class RockData {
 		this.id = Rock.BLANK_ROCK_ID;
 		this.remoteId = "";
 		this.deleted = false;
+		this.deletedChanged = null;
 		this.lat = 0.0d;
 		this.lon = 0.0d;
 		this.posChanged = null;
@@ -58,9 +60,15 @@ public class RockData {
 	public boolean isDeleted() {
 		return deleted;
 	}
+	public Date getDeletedChanged(){
+		return this.deletedChanged;
+	}
 
 	public void setDeleted(boolean deleted) {
 		this.deleted = deleted;
+	}
+	public void setDeletedChanged(Date deletedChanged) {
+		this.deletedChanged = deletedChanged;
 	}
 
 	public double getLat() {
