@@ -24,7 +24,7 @@ public class MarkerHandler {
 	private ATKMap map;
 	private DatabaseHelper dbHelper;
 	private int selectedRockId;
-	private int RockState;
+	private int RockState = MainActivity.STATE_ROCKS_BOTH;
 	private Context context;
 	
 	public MarkerHandler(Context context, ATKMap theMap, DatabaseHelper dbHelper) {

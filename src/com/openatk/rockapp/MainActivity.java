@@ -38,6 +38,8 @@ import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.openatk.libtrello.TrelloContentProvider;
+import com.openatk.libtrello.TrelloSyncHelper;
+import com.openatk.libtrello.TrelloSyncInfo;
 import com.openatk.openatklib.atkmap.ATKMap;
 import com.openatk.openatklib.atkmap.ATKSupportMapFragment;
 import com.openatk.openatklib.atkmap.listeners.ATKMapClickListener;
@@ -75,7 +77,7 @@ public class MainActivity extends FragmentActivity implements
 	private static final int STATE_ROCK_EDIT = 1;
 
 	// UI Rock View (Picked/Not Picked/Both) States
-	private int mRockState;
+	private int mRockState = STATE_ROCKS_BOTH;
 	public static final int STATE_ROCKS_PICKED_UP = 0;
 	public static final int STATE_ROCKS_NOT_PICKED_UP = 1;
 	public static final int STATE_ROCKS_BOTH = 2;
@@ -92,13 +94,16 @@ public class MainActivity extends FragmentActivity implements
 
 	private List<LatLng> undoMoves = new ArrayList<LatLng>();
 
+	private TrelloSyncHelper syncHelper;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
 		dbHelper = new DatabaseHelper(this);
-		
+		syncHelper = new TrelloSyncHelper();
+
 		FragmentManager fm = getSupportFragmentManager();
 		atkmapFragment = (ATKSupportMapFragment) fm.findFragmentById(R.id.map);
 
@@ -167,7 +172,11 @@ public class MainActivity extends FragmentActivity implements
 		checkGPS();
 		// Listen for image requests from RockMenu
 		LocalBroadcastManager.getInstance(this).registerReceiver(mapBroadcastReciever, new IntentFilter(MainActivity.INTENT_ROCKS_UPDATED));
-		//TODO markerHandler.populateMap(mCurrentRockSelected);
+		
+		//TODO change this to flag in our provider
+		markerHandler.populateMap(mCurrentRockSelected); //Refresh rocks in case sync occured while gone
+		
+		this.syncHelper.onResume(this); //Startup autosync if it is on
 	}
 
 	@Override
@@ -187,6 +196,7 @@ public class MainActivity extends FragmentActivity implements
 			editor.putFloat("StartupZoom",(float) atkmap.getCameraPosition().zoom); 
 			editor.commit();
 		}
+		syncHelper.onPause();
 	}
 
 	private void setUpMapIfNeeded() {
@@ -302,6 +312,17 @@ public class MainActivity extends FragmentActivity implements
 				undoButton.setVisible(true);
 			}
 		}
+		
+		MenuItem auto_sync = menu.findItem(R.id.auto_sync);
+		MenuItem sync = menu.findItem(R.id.sync);
+		if(TrelloContentProvider.isInstalled()){
+			if(auto_sync != null) auto_sync.setVisible(true);
+			if(sync != null) sync.setVisible(true);
+		} else {
+			if(auto_sync != null) auto_sync.setVisible(false);
+			if(sync != null) sync.setVisible(false);
+		}
+		
 		return true;
 	}
 
@@ -369,6 +390,57 @@ public class MainActivity extends FragmentActivity implements
 			//Tell trello app to sync
 			TrelloContentProvider.Sync(this.getApplicationContext().getPackageName());
 			result = true;
+			break;
+		case R.id.auto_sync:
+			TrelloSyncInfo syncInfo = syncHelper.getSyncInfo(getApplicationContext());
+			
+			int selected = -1;
+			if(syncInfo != null){
+				if(syncInfo.getAutoSync() != null && syncInfo.getAutoSync() == false){
+					selected = 0;
+				} else if(syncInfo.getInterval() != null) {
+					Log.d("MainActivity", "syncInfo interval:" + syncInfo.getInterval());
+					if(syncInfo.getInterval() == 60) selected = 1;
+					if(syncInfo.getInterval() == 60*5) selected = 2;
+					if(syncInfo.getInterval() == 60*10) selected = 3;
+					if(syncInfo.getInterval() == 60*30) selected = 4;
+				}
+			}
+			String[] options = { 
+					"Never", "1 min", "5 min", "10 min", "30 min"
+				};
+			new AlertDialog.Builder(this).setTitle("Autosync Interval").setSingleChoiceItems(options, selected, 
+					new DialogInterface.OnClickListener() {
+						Integer devAutoSyncOnTrigger = 0;
+						public void onClick(DialogInterface dialog, int which) {
+							if(which == 0){
+								syncHelper.autoSyncOff(getApplicationContext());
+							} else if(which == 1) {
+								syncHelper.autoSyncOn(getApplicationContext(), 60);
+							} else if(which == 2) {
+								syncHelper.autoSyncOn(getApplicationContext(), 60*5);
+							} else if(which == 3) {
+								syncHelper.autoSyncOn(getApplicationContext(), 60*10);
+							} else if(which == 4) {
+								syncHelper.autoSyncOn(getApplicationContext(), 60*30);
+								devAutoSyncOnTrigger++;
+								if(devAutoSyncOnTrigger > 9){
+									if(devAutoSyncOnTrigger % 2 == 0){
+										syncHelper.devAutoSyncOn(getApplicationContext(), 3);
+										Toast.makeText(getApplicationContext(), "Presentation auto sync on, every 3 seconds.", Toast.LENGTH_SHORT).show();
+									} else {
+										syncHelper.devAutoSyncOff(getApplicationContext());
+										Toast.makeText(getApplicationContext(), "Presentation auto sync off.", Toast.LENGTH_SHORT).show();
+									}
+								}
+							}
+			           }
+					}).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+			             @Override
+			             public void onClick(DialogInterface dialog, int id) {
+			                 
+			             }
+			         }).show();
 			break;
 		case R.id.menu_help:
 			AlertDialog.Builder alert = new AlertDialog.Builder(this);

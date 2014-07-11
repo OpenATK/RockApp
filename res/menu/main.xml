@@ -58,6 +58,12 @@
 	    android:icon="@drawable/refresh"
         android:title="@string/menu_sync"
         android:visible="true" />
+    <item 
+        android:id="@+id/auto_sync"
+        android:showAsAction="never" 
+	    android:icon="@drawable/refresh"
+        android:title="Auto Sync"
+        android:visible="true" />
     <item
         android:id="@+id/menu_help"
         android:orderInCategory="100"
